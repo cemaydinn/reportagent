@@ -1,0 +1,130 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/big_data_dashboard/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String?
+  email        String        @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  analyses     Analysis[]
+  chatSessions ChatSession[]
+  files        File[]
+
+  @@map("users")
+}
+
+model File {
+  id               String     @id @default(cuid())
+  filename         String
+  originalName     String
+  mimeType         String
+  size             BigInt
+  cloudStoragePath String
+  status           FileStatus @default(UPLOADED)
+  uploadedAt       DateTime   @default(now())
+  processedAt      DateTime?
+  metadata         Json?
+  rowCount         Int?
+  columnCount      Int?
+  dateRange        Json?
+  userId           String
+  analyses         Analysis[]
+  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("files")
+}
+
+model Analysis {
+  id             String         @id @default(cuid())
+  type           AnalysisType
+  status         AnalysisStatus @default(PENDING)
+  createdAt      DateTime       @default(now())
+  completedAt    DateTime?
+  summary        Json?
+  kpis           Json?
+  trends         Json?
+  insights       Json?
+  actionItems    Json?
+  visualizations Json?
+  options        Json?
+  fileId         String
+  userId         String
+  file           File           @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("analyses")
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  title     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  userId    String
+  messages  ChatMessage[]
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  content   String
+  role      MessageRole
+  timestamp DateTime    @default(now())
+  metadata  Json?
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model AnalysisTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  template    Json
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("analysis_templates")
+}
+
+enum FileStatus {
+  UPLOADED
+  PROCESSING
+  COMPLETED
+  FAILED
+  DELETED
+}
+
+enum AnalysisType {
+  SUMMARY
+  KPI_EXTRACTION
+  TREND_ANALYSIS
+  COMPARISON
+  FULL_ANALYSIS
+  CUSTOM
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
